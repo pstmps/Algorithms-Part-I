@@ -1,15 +1,11 @@
-
-
-import edu.princeton.cs.algs4.StdRandom;
-import edu.princeton.cs.algs4.StdStats;
 import edu.princeton.cs.algs4.WeightedQuickUnionUF;
 
 public class Percolation {
 
     private int size;
     private int n;
-    private int[][] grid;
-    private int numberOfOpenSites;
+    private boolean[][] grid;
+    private int numberOfOpenSites = 0;
     private WeightedQuickUnionUF uf;
 
     // creates n-by-n grid, with all sites initially blocked
@@ -23,18 +19,18 @@ public class Percolation {
         this.size = n;
 
         // create n-by-n grid, with all sites initially blocked(set to 0)
-        grid = new int[size][size];
+        grid = new boolean[size][size];
         for (int i = 0; i < size; i++)
         {
             for (int j = 0; j < size; j++)
             {
-                grid[i][j] = 0;
+                grid[i][j] = false;
                 //  grid[i][j] = i * size + j + 1;
             }
         }
 
         // create a WeightedQuickUnionUF object
-        uf = new WeightedQuickUnionUF(size * size);
+        uf = new WeightedQuickUnionUF(size * size + 2);
     }
 
     private int[] adjustIndices(int row, int col) {
@@ -44,10 +40,10 @@ public class Percolation {
     private int getGridNumber(int row, int col)
     {
         int[] adjusted = adjustIndices(row, col);
-        int adjusted_row = adjusted[0];
-        int adjusted_col = adjusted[1];
+        int adjustedRow = adjusted[0];
+        int adjustedCol = adjusted[1];
         // returns an integer value of a grid index, all cells geting number from 1 to end of grid
-        int index = adjusted_row * size + adjusted_col + 1;
+        int index = adjustedRow * size + adjustedCol + 1;
         return index;
     }
 
@@ -60,18 +56,19 @@ public class Percolation {
         }
 
         int[] adjusted = adjustIndices(row, col);
-        int adjusted_row = adjusted[0];
-        int adjusted_col = adjusted[1];
+        int adjustedRow = adjusted[0];
+        int adjustedCol = adjusted[1];
 
         if (!isOpen(row, col))
         {
-            grid[adjusted_row][adjusted_col] = 1;
+            grid[adjustedRow][adjustedCol] = true;
             numberOfOpenSites++;
+            connect(row, col);
         }
     }
 
     // // is the site (row, col) open?
-    public boolean isOpen(int row, int col){
+    public boolean isOpen(int row, int col) {
 
         if (!isValid(row, col))
         {
@@ -79,34 +76,61 @@ public class Percolation {
         }
 
         int[] adjusted = adjustIndices(row, col);
-        int adjusted_row = adjusted[0];
-        int adjusted_col = adjusted[1];
+        int adjustedRow = adjusted[0];
+        int adjustedCol = adjusted[1];
 
-        if (grid[adjusted_row][adjusted_col] == 1)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
-        }
+        return (grid[adjustedRow][adjustedCol]);
+
     }
 
-    // private boolean isValid(int row, int col) {
-    //     return row >= 1 && row <= size && col >= 1 && col <= size;
-    // }
     private boolean isValid(int row, int col)
     {
-        if (row < 1 || row > (size) || col < 1 || col > (size))
-        {
-            return false;
-        }
-        else
-        {
-            return true;
-        }
+        return (row >= 1 && row <= size && col >= 1 && col <= size);
     }
 
+    private void connect(int row, int col) {
+
+        int[] adjusted = adjustIndices(row, col);
+        int adjustedRow = adjusted[0];
+        int adjustedCol = adjusted[1];
+
+        int index = 0;
+        int root;
+        if (row == 1) {
+            uf.union(0, getGridNumber(row, col));
+            root = 0;
+        } else {
+            root = uf.find(getGridNumber(row, col));
+        }
+
+        // if (row == size) {
+        //     uf.union(size * size + 1, getGridNumber(row, col));
+        // }
+
+        // int root = uf.find(getGridNumber(row, col));
+
+        int[][] directions = {
+            {-1, 0}, // up
+            {1, 0},  // down
+            {0, -1}, // left
+            {0, 1}   // right
+        };
+
+        while (index < directions.length) {
+            int newRow = adjustedRow + directions[index][0];
+            int newCol = adjustedCol + directions[index][1];
+            if (isValid(newRow + 1, newCol + 1) && isOpen(newRow + 1, newCol + 1)) {
+                if (getGridNumber(newRow + 1, newCol + 1) > root) {
+                    uf.union(root, getGridNumber(newRow + 1, newCol + 1));
+                }
+                else {
+                    uf.union(getGridNumber(newRow + 1, newCol + 1), root);
+                }
+            }
+            index++;
+        }
+
+    }
     // // is the site (row, col) full?
     public boolean isFull(int row, int col)
     {
@@ -121,41 +145,9 @@ public class Percolation {
             return false;
         }
 
-        int[] adjusted = adjustIndices(row, col);
-        int adjusted_row = adjusted[0];
-        int adjusted_col = adjusted[1];
+        return uf.find(0) == uf.find(getGridNumber(row, col));
 
-        int index = 0;
-        int root = uf.find(getGridNumber(row, col));
-
-        int[][] directions = {
-            {-1, 0}, // up
-            {1, 0},  // down
-            {0, -1}, // left
-            {0, 1}   // right
-        };
-
-        while (index < directions.length) {
-            int newRow = adjusted_row + directions[index][0];
-            int newCol = adjusted_col + directions[index][1];
-            if (isValid(newRow + 1, newCol + 1) && isOpen(newRow + 1, newCol + 1)) {
-                if (getGridNumber(newRow, newCol) > root) {
-                    uf.union(root, getGridNumber(newRow + 1, newCol + 1));
-                }
-                else {
-                    uf.union(getGridNumber(newRow + 1, newCol + 1), root);
-                }
-            }
-            index++;
-        }
-
-        if (uf.find(getGridNumber(row, col)) <= size) {
-            return true;
-        }
-        else {
-            return false;
-        }
-
+        // return uf.find(getGridNumber(row, col)) <= size;
 
         // System.out.println("Root: " + uf.find(getGridNumber(row, col))+ " " + uf.count());
 
@@ -165,9 +157,11 @@ public class Percolation {
 
     public boolean percolates()
     {
-        for (int i = 0; i < size; i++)
+        // return uf.find(0) == uf.find(size * size + 1);
+        for (int i = 1; i <= size; i++)
         {
-            if (isFull(size, i + 1))
+            // System.out.println("checking"+ size + " " + i);
+            if (isFull(size, i))
             {
                 return true;
             }
@@ -175,99 +169,54 @@ public class Percolation {
         return false;
     }
 
-    // get an array of open neighbors of a cell
-
-    // public int[] getNeighbors(int row, int col)
-    // {
-    //     if (!isValid(row, col))
-    //     {
-    //         throw new IllegalArgumentException("row and col must be between 1 and " + (size));
-    //     }
-    //     int[] adjusted = adjustIndices(row, col);
-    //     int adjusted_row = adjusted[0];
-    //     int adjusted_col = adjusted[1];
-
-    //     //get neighbors of the grid by checking if the cell is open
-    //     int[] neighbors = new int[4];
-    //     int index = 0;
-
-
-
-
-    //     return neighbors;
-    // }
-
     // // returns the number of open sites
     public int numberOfOpenSites()
     {
         return numberOfOpenSites;
     }
 
-    // // does the system percolate?
-    // public boolean percolates()
-
-    private void print_grid()
-    {
-        for (int i = 0; i < size; i++)
-        {
-            for (int j = 0; j < size; j++)
-            {
-                System.out.println("Index " + i + " and " + j + " value: " + grid[i][j]);
-            }
-        }
-    }
-
     // test client (optional)
-    public static void main(String[] args){
-        int n = 3;
-        Percolation p = new Percolation(n);
-        System.out.println("Percolation created with n = " + n);
+    public static void main(String[] args) {
+        Percolation percolation = new Percolation(10);
 
-        System.out.println("Grid:" + p.grid[0][0]);
+        int[][] cellsToOpen = {
+            {1, 1},
+            {1, 10},
+            {2, 10},
+            {2, 1},  // down
+            {3, 1}, // left
+            {3, 2},   // right
+            {3, 3},
+            {3, 2},
+            {4, 3},
+            {5, 3},
+            {5, 4},
+            {5, 5},
+            {5, 6},
+            {6, 6},
+            {7, 6},
+            {8, 6},
+            // {9, 6},
+            {10, 7}
+        };
 
-        int size = n;
-        // p.print_grid();
-        p.open(1,2);
-        p.open(2,2);
-        // p.open(3,2);
-        // p.print_grid();
-
-        System.out.println("Is open 1: " + p.isOpen(1,1));
-        System.out.println("Is open 2: " + p.isOpen(2,2));
-
-        for (int i = 1; i <= size; i++)
-        {
-            for (int j = 1; j <= size; j++)
-            {
-                System.out.println("Index " + i + " " + j + " " + p.getGridNumber(i, j));
-            }
-        }
-        System.out.println("Is open 8: "  + p.uf.count());
-
-        System.out.println(p.isFull(2,2));
-
-        for (int i = 1; i <= size; i++)
-        {
-            for (int j = 1; j <= size; j++)
-            {
-                System.out.println("Is full " + i + " " + j + " " + p.isFull(i, j));
-            }
+        for (int[] cell : cellsToOpen) {
+            percolation.open(cell[0], cell[1]);
         }
 
-        System.out.println("Percolates: " + p.percolates());
+        for (int i = 1; i <= 10; i++) {
+            for (int j = 1; j <= 10; j++) {
+                percolation.open(i,j);
+                System.out.print(percolation.isOpen(i, j) + " ");
+            }
+            System.out.println();
+        }
 
 
-        //System.out.println("Neighbors" + p.getNeighbors(1,1)[0]);
-
-        // print all neighbors of 0,1
-        // int[] neighbors = p.getNeighbors(0,1);
-
-        // for (int i = 0; i < neighbors.length; i++)
-        // {
-        //     System.out.println("Neighbors: " + neighbors[i]);
-        // }
-
-
+        //    Percolation percolation = new Percolation(3);
+        // percolation.open(1, 1);
+        System.out.println(percolation.isFull(2, 9));
+        System.out.println(percolation.percolates());
 
     }
 }

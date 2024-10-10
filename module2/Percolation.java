@@ -4,9 +4,11 @@ public class Percolation {
 
     private int size;
     private int n;
-    private boolean[][] grid;
+    private byte[][] grid;
+
     private int numberOfOpenSites = 0;
     private WeightedQuickUnionUF uf;
+    private WeightedQuickUnionUF fillOnly;
 
     // creates n-by-n grid, with all sites initially blocked
     public Percolation(int n)
@@ -19,18 +21,19 @@ public class Percolation {
         this.size = n;
 
         // create n-by-n grid, with all sites initially blocked(set to 0)
-        grid = new boolean[size][size];
+        grid = new byte[size][size];
         for (int i = 0; i < size; i++)
         {
             for (int j = 0; j < size; j++)
             {
-                grid[i][j] = false;
+                grid[i][j] = 0;
                 //  grid[i][j] = i * size + j + 1;
             }
         }
 
         // create a WeightedQuickUnionUF object
         uf = new WeightedQuickUnionUF(size * size + 2);
+        fillOnly = new WeightedQuickUnionUF(size * size + 2);
     }
 
     private int[] adjustIndices(int row, int col) {
@@ -61,7 +64,7 @@ public class Percolation {
 
         if (!isOpen(row, col))
         {
-            grid[adjustedRow][adjustedCol] = true;
+            grid[adjustedRow][adjustedCol] = 1;
             numberOfOpenSites++;
             connect(row, col);
         }
@@ -79,7 +82,7 @@ public class Percolation {
         int adjustedRow = adjusted[0];
         int adjustedCol = adjusted[1];
 
-        return (grid[adjustedRow][adjustedCol]);
+        return (grid[adjustedRow][adjustedCol] == 1);
 
     }
 
@@ -98,14 +101,15 @@ public class Percolation {
         int root;
         if (row == 1) {
             uf.union(0, getGridNumber(row, col));
+            fillOnly.union(0, getGridNumber(row,col));
             root = 0;
         } else {
             root = uf.find(getGridNumber(row, col));
         }
 
-        // if (row == size) {
-        //     uf.union(size * size + 1, getGridNumber(row, col));
-        // }
+        if (row == size) {
+            uf.union(size * size + 1, getGridNumber(row, col));
+        }
 
         // int root = uf.find(getGridNumber(row, col));
 
@@ -122,9 +126,11 @@ public class Percolation {
             if (isValid(newRow + 1, newCol + 1) && isOpen(newRow + 1, newCol + 1)) {
                 if (getGridNumber(newRow + 1, newCol + 1) > root) {
                     uf.union(root, getGridNumber(newRow + 1, newCol + 1));
+                    fillOnly.union(root, getGridNumber(newRow + 1, newCol + 1));
                 }
                 else {
                     uf.union(getGridNumber(newRow + 1, newCol + 1), root);
+                    fillOnly.union(root, getGridNumber(newRow + 1, newCol + 1));
                 }
             }
             index++;
@@ -145,7 +151,7 @@ public class Percolation {
             return false;
         }
 
-        return uf.find(0) == uf.find(getGridNumber(row, col));
+        return fillOnly.find(0) == fillOnly.find(getGridNumber(row, col));
 
         // return uf.find(getGridNumber(row, col)) <= size;
 
@@ -157,16 +163,16 @@ public class Percolation {
 
     public boolean percolates()
     {
-        // return uf.find(0) == uf.find(size * size + 1);
-        for (int i = 1; i <= size; i++)
-        {
-            // System.out.println("checking"+ size + " " + i);
-            if (isFull(size, i))
-            {
-                return true;
-            }
-        }
-        return false;
+        return uf.find(0) == uf.find(size * size + 1);
+        // for (int i = 1; i <= size; i++)
+        // {
+        //     // System.out.println("checking"+ size + " " + i);
+        //     if (isFull(size, i))
+        //     {
+        //         return true;
+        //     }
+        // }
+        // return false;
     }
 
     // // returns the number of open sites
